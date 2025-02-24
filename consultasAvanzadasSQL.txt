@@ -1,0 +1,176 @@
+Base de Datos 1 Laboratorio Consultas avanzadas
+Se considera la siguiente base de datos relacional, diseñada para un sistema de gestión:
+CLIENTE (cod_cli, nombre, ciudad)
+PROVEEDOR (cod_prov, nombre, ciudad)
+PRODUCTO (cod_prod, nombre, precio, cod_prov)
+ORDEN (num_orden, cod_cli, fecha_orden, fecha_entrega)
+DETALLE (num_orden, cod_prod, cantidad)
+Resolver los siguientes requerimientos utilizando SQL (en Oracle):
+
+
+1) Seleccionar la cantidad de clientes.
+
+SELECT COUNT(*) AS cantidad_clientes FROM CLIENTE;
+
+
+2) Seleccionar el mayor y el menor precio de los productos.
+
+SELECT MAX(precio) AS precio_maximo, MIN(precio) AS precio_minimo FROM PRODUCTO;
+
+
+3) Seleccionar el promedio de precios de los productos.
+
+SELECT AVG(precio) AS precio_promedio FROM PRODUCTO;
+
+
+4) Seleccionar el número de las órdenes cuando el precio del producto ordenado sea el precio
+mayor de todos los productos.
+
+SELECT DISTINCT num_orden 
+FROM DETALLE 
+WHERE cod_prod IN (
+    SELECT cod_prod FROM PRODUCTO WHERE precio = (SELECT MAX(precio) FROM PRODUCTO)
+);
+
+
+5) Seleccionar la cantidad de clientes por ciudad.
+
+SELECT ciudad, COUNT(*) AS cantidad_clientes 
+FROM CLIENTE 
+GROUP BY ciudad;
+
+
+
+6) Seleccionar la cantidad de órdenes por día en el período comprendido entre el 1 y 20 de abril de
+este año.
+
+SELECT fecha_orden, COUNT(*) AS cantidad_ordenes 
+FROM ORDEN 
+WHERE fecha_orden BETWEEN DATE '2025-04-01' AND DATE '2025-04-20' 
+GROUP BY fecha_orden;
+
+
+7) Seleccionar la cantidad de órdenes que hay por día, con su respectivo importe.
+
+
+SELECT o.fecha_orden, COUNT(o.num_orden) AS cantidad_ordenes, SUM(d.cantidad * p.precio) AS importe_total
+FROM ORDEN o
+JOIN DETALLE d ON o.num_orden = d.num_orden
+JOIN PRODUCTO p ON d.cod_prod = p.cod_prod
+GROUP BY o.fecha_orden;
+
+
+8) Seleccionar las ciudades en donde hay más de 3 clientes.
+
+SELECT ciudad 
+FROM CLIENTE 
+GROUP BY ciudad 
+HAVING COUNT(*) > 3;
+
+
+9) Seleccionar el número de las órdenes en donde se haya pedido más de un producto.
+
+SELECT num_orden 
+FROM DETALLE 
+GROUP BY num_orden 
+HAVING COUNT(DISTINCT cod_prod) > 1;
+
+
+10) Seleccionar el número de las órdenes cuando la cantidad total pedida es superior a 100 y no se
+pida menos de 30 unidades por producto.
+
+SELECT num_orden 
+FROM DETALLE 
+GROUP BY num_orden 
+HAVING SUM(cantidad) > 100 AND MIN(cantidad) >= 30;
+
+
+
+11) Seleccionar el número de las órdenes en donde se hayan pedido productos de más de un
+proveedor.
+
+
+SELECT d.num_orden 
+FROM DETALLE d
+JOIN PRODUCTO p ON d.cod_prod = p.cod_prod
+GROUP BY d.num_orden
+HAVING COUNT(DISTINCT p.cod_prov) > 1;
+
+
+
+
+12) Seleccionar el código de los clientes que han realizado la mayor o la menor cantidad de órdenes.
+
+SELECT cod_cli 
+FROM ORDEN 
+GROUP BY cod_cli 
+HAVING COUNT(*) = (SELECT MAX(cantidad) FROM (SELECT cod_cli, COUNT(*) AS cantidad FROM ORDEN GROUP BY cod_cli))
+   OR COUNT(*) = (SELECT MIN(cantidad) FROM (SELECT cod_cli, COUNT(*) AS cantidad FROM ORDEN GROUP BY cod_cli));
+
+
+13) Seleccionar el nombre de los clientes que han realizado la mayor cantidad de órdenes.
+
+
+SELECT c.nombre 
+FROM CLIENTE c
+WHERE c.cod_cli = (
+    SELECT cod_cli 
+    FROM ORDEN 
+    GROUP BY cod_cli 
+    ORDER BY COUNT(*) DESC 
+    FETCH FIRST 1 ROWS ONLY
+);
+
+
+
+14) Seleccionar el nombre de los clientes que han ordenado la mayor cantidad de productos.
+
+SELECT c.nombre 
+FROM CLIENTE c
+JOIN ORDEN o ON c.cod_cli = o.cod_cli
+JOIN DETALLE d ON o.num_orden = d.num_orden
+GROUP BY c.cod_cli, c.nombre
+ORDER BY SUM(d.cantidad) DESC
+FETCH FIRST 1 ROWS ONLY;
+
+
+
+15) Seleccionar el número de las órdenes en donde se hayan pedido más productos fabricados por
+distintos proveedores.
+
+SELECT d.num_orden 
+FROM DETALLE d
+JOIN PRODUCTO p ON d.cod_prod = p.cod_prod
+GROUP BY d.num_orden
+ORDER BY COUNT(DISTINCT p.cod_prov) DESC
+FETCH FIRST 1 ROWS ONLY;
+
+
+16) Seleccionar el nombre de los clientes que han ordenado absolutamente todos los productos.
+
+SELECT c.nombre 
+FROM CLIENTE c
+JOIN ORDEN o ON c.cod_cli = o.cod_cli
+JOIN DETALLE d ON o.num_orden = d.num_orden
+GROUP BY c.cod_cli, c.nombre
+HAVING COUNT(DISTINCT d.cod_prod) = (SELECT COUNT(*) FROM PRODUCTO);
+
+
+17) Seleccionar el nombre de los clientes que han ordenado absolutamente todos los productos de
+los proveedores de la ciudad de Montevideo. 
+
+SELECT c.nombre 
+FROM CLIENTE c
+JOIN ORDEN o ON c.cod_cli = o.cod_cli
+JOIN DETALLE d ON o.num_orden = d.num_orden
+JOIN PRODUCTO p ON d.cod_prod = p.cod_prod
+JOIN PROVEEDOR prov ON p.cod_prov = prov.cod_prov
+WHERE prov.ciudad = 'Montevideo'
+GROUP BY c.cod_cli, c.nombre
+HAVING COUNT(DISTINCT p.cod_prod) = 
+       (SELECT COUNT(*) FROM PRODUCTO p2 
+        JOIN PROVEEDOR prov2 ON p2.cod_prov = prov2.cod_prov 
+        WHERE prov2.ciudad = 'Montevideo');
+
+
+
